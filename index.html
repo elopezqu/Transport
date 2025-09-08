@@ -1,58 +1,416 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Mapa con ubicación usando Mapbox</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- CSS de Mapbox -->
-  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
-  <style>
-    body, html { margin: 0; padding: 0; height: 100%; }
-    #map { width: 100%; height: 100vh; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seguimiento en Tiempo Real - Mapbox</title>
+    
+    <!-- Mapbox GL JS -->
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.9.2/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.9.2/mapbox-gl.css' rel='stylesheet' />
+    
+    <!-- Mapbox Geolocation plugin -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.7.2/mapbox-gl-geocoder.min.js"></script>
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.7.2/mapbox-gl-geocoder.css" type="text/css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        header {
+            background: linear-gradient(90deg, #4269e1 0%, #3a63d6 100%);
+            color: white;
+            padding: 1.2rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        header h1 {
+            font-size: 1.8rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        header p {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .content {
+            display: flex;
+            flex: 1;
+        }
+        
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+            border-radius: 0;
+        }
+        
+        .sidebar {
+            width: 320px;
+            background-color: white;
+            padding: 1.5rem;
+            box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        .card {
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            padding: 1.2rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: #3a63d6;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .card h2 i {
+            font-size: 1.4rem;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #4caf50;
+        }
+        
+        .status-indicator.inactive {
+            background-color: #f44336;
+        }
+        
+        .coordinates {
+            background-color: #eeeeee;
+            padding: 0.8rem;
+            border-radius: 8px;
+            font-family: monospace;
+            margin: 0.8rem 0;
+        }
+        
+        button {
+            background-color: #4269e1;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.3s;
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+        
+        button:hover {
+            background-color: #3a63d6;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .instructions {
+            line-height: 1.6;
+        }
+        
+        .instructions ol {
+            margin-left: 1.2rem;
+        }
+        
+        .instructions li {
+            margin-bottom: 0.5rem;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 1rem;
+            background-color: #333;
+            color: white;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 768px) {
+            .content {
+                flex-direction: column;
+            }
+            
+            .sidebar {
+                width: 100%;
+                order: 2;
+            }
+            
+            .map-container {
+                height: 400px;
+                order: 1;
+            }
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <header>
+            <h1>Seguimiento de Ubicación en Tiempo Real</h1>
+            <p>Usando Mapbox GL JS y Geolocation API</p>
+        </header>
+        
+        <div class="content">
+            <div class="map-container">
+                <div id="map"></div>
+            </div>
+            
+            <div class="sidebar">
+                <div class="card">
+                    <h2><i>📍</i> Estado del Seguimiento</h2>
+                    <div class="status">
+                        <div class="status-indicator inactive" id="status-indicator"></div>
+                        <span id="status-text">Seguimiento inactivo</span>
+                    </div>
+                    <div class="coordinates">
+                        Latitud: <span id="lat">--</span><br>
+                        Longitud: <span id="lng">--</span><br>
+                        Exactitud: <span id="accuracy">--</span> m
+                    </div>
+                    <button id="toggle-tracking">Iniciar Seguimiento</button>
+                </div>
+                
+                <div class="card">
+                    <h2><i>ℹ️</i> Instrucciones</h2>
+                    <div class="instructions">
+                        <ol>
+                            <li>Haz clic en "Iniciar Seguimiento" para comenzar</li>
+                            <li>Comparte tu ubicación cuando el navegador lo solicite</li>
+                            <li>Muévate para ver el seguimiento en tiempo real</li>
+                            <li>Haz clic en "Detener Seguimiento" para finalizar</li>
+                        </ol>
+                        <p><strong>Nota:</strong> Para mejores resultados, usa un dispositivo con GPS.</p>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h2><i>⚙️</i> Configuración de Mapbox</h2>
+                    <p>Para usar esta aplicación, necesitas:</p>
+                    <ol>
+                        <li>Crear una cuenta en <a href="https://www.mapbox.com/" target="_blank">Mapbox</a></li>
+                        <li>Obtener un token de acceso público</li>
+                        <li>Reemplazar "TU_TOKEN_MAPBOX_AQUI" con tu token real</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>© 2023 Seguimiento en Tiempo Real con Mapbox | Diseñado para fines educativos</p>
+        </footer>
+    </div>
 
-<div id="map"></div>
-
-<!-- JS de Mapbox -->
-<script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-<script>
-  // Tu token de acceso de Mapbox (regístrate en https://www.mapbox.com para obtener uno)
-  mapboxgl.accessToken = 'pk.eyJ1IjoiZ2FicmllbDI5LXMiLCJhIjoiY20yMnZvYnExMDJwNzJqcTV3d3J3cmUxdSJ9.fA3z9inzGxKvS2GC_rH20g';
-
-  // Crear el mapa centrado en una ubicación por defecto
-  const map = new mapboxgl.Map({
-    container: 'map',
-    style: 'mapbox://styles/mapbox/streets-v12',
-    center: [-74.5, 40], // Longitud, Latitud (ejemplo: Nueva York)
-    zoom: 9
-  });
-
-  // Intentar obtener la ubicación del usuario
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(position => {
-      const userLng = position.coords.longitude;
-      const userLat = position.coords.latitude;
-
-      // Centrar el mapa en la ubicación del usuario
-      map.setCenter([userLng, userLat]);
-      map.setZoom(14);
-
-      // Agregar un marcador en la ubicación del usuario
-      new mapboxgl.Marker()
-        .setLngLat([userLng, userLat])
-        .setPopup(new mapboxgl.Popup().setText("Tu ubicación"))
-        .addTo(map);
-
-    }, error => {
-      alert('Error al obtener la ubicación: ' + error.message);
-    });
-  } else {
-    alert('Geolocalización no soportada por tu navegador');
-  }
-</script>
-
+    <script>
+        // Reemplaza esto con tu token de Mapbox
+        mapboxgl.accessToken = 'pk.eyJ1IjoiZ2FicmllbDI5LXMiLCJhIjoiY20yMnZvYnExMDJwNzJqcTV3d3J3cmUxdSJ9.fA3z9inzGxKvS2GC_rH20g';
+        
+        // Elementos de la interfaz
+        const toggleTrackingBtn = document.getElementById('toggle-tracking');
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+        const latElement = document.getElementById('lat');
+        const lngElement = document.getElementById('lng');
+        const accuracyElement = document.getElementById('accuracy');
+        
+        // Variables para el mapa y el seguimiento
+        let map;
+        let userMarker;
+        let watchId = null;
+        let isTracking = false;
+        
+        // Inicializar el mapa
+        function initMap() {
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/streets-v11',
+                center: [-74.006, 40.7128], // Nueva York por defecto
+                zoom: 13
+            });
+            
+            // Agregar controles de navegación
+            map.addControl(new mapboxgl.NavigationControl());
+            
+            // Agregar control de geolocalización
+            map.addControl(new mapboxgl.GeolocateControl({
+                positionOptions: {
+                    enableHighAccuracy: true
+                },
+                trackUserLocation: true,
+                showUserLocation: false // Usaremos nuestro propio marcador
+            }));
+            
+            // Cargar el mapa
+            map.on('load', () => {
+                console.log('Mapa cargado correctamente');
+            });
+        }
+        
+        // Iniciar o detener el seguimiento
+        function toggleTracking() {
+            if (isTracking) {
+                stopTracking();
+            } else {
+                startTracking();
+            }
+        }
+        
+        // Iniciar el seguimiento de ubicación
+        function startTracking() {
+            if (!navigator.geolocation) {
+                alert('Geolocalización no es soportada por tu navegador');
+                return;
+            }
+            
+            // Actualizar interfaz
+            isTracking = true;
+            statusIndicator.classList.remove('inactive');
+            statusIndicator.classList.add('active');
+            statusText.textContent = 'Seguimiento activo';
+            toggleTrackingBtn.textContent = 'Detener Seguimiento';
+            
+            // Opciones para la geolocalización
+            const options = {
+                enableHighAccuracy: true,
+                maximumAge: 30000,
+                timeout: 27000
+            };
+            
+            // Obtener ubicación actual
+            navigator.geolocation.getCurrentPosition(
+                position => updatePosition(position),
+                error => handleError(error),
+                options
+            );
+            
+            // Observar cambios de ubicación
+            watchId = navigator.geolocation.watchPosition(
+                position => updatePosition(position),
+                error => handleError(error),
+                options
+            );
+        }
+        
+        // Detener el seguimiento de ubicación
+        function stopTracking() {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+            
+            // Actualizar interfaz
+            isTracking = false;
+            statusIndicator.classList.remove('active');
+            statusIndicator.classList.add('inactive');
+            statusText.textContent = 'Seguimiento inactivo';
+            toggleTrackingBtn.textContent = 'Iniciar Seguimiento';
+        }
+        
+        // Actualizar la posición en el mapa
+        function updatePosition(position) {
+            const { latitude, longitude, accuracy } = position.coords;
+            
+            // Actualizar la interfaz con las coordenadas
+            latElement.textContent = latitude.toFixed(6);
+            lngElement.textContent = longitude.toFixed(6);
+            accuracyElement.textContent = accuracy.toFixed(2);
+            
+            // Centrar el mapa en la nueva ubicación
+            map.flyTo({
+                center: [longitude, latitude],
+                zoom: 15,
+                speed: 1.5
+            });
+            
+            // Actualizar o crear el marcador
+            if (!userMarker) {
+                // Crear un elemento personalizado para el marcador
+                const el = document.createElement('div');
+                el.className = 'user-marker';
+                el.style.width = '20px';
+                el.style.height = '20px';
+                el.style.backgroundColor = '#4269e1';
+                el.style.borderRadius = '50%';
+                el.style.border = '3px solid white';
+                el.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.3)';
+                
+                userMarker = new mapboxgl.Marker(el)
+                    .setLngLat([longitude, latitude])
+                    .addTo(map);
+            } else {
+                userMarker.setLngLat([longitude, latitude]);
+            }
+        }
+        
+        // Manejar errores de geolocalización
+        function handleError(error) {
+            console.error('Error obteniendo la ubicación:', error);
+            
+            let errorMessage;
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    errorMessage = 'Permiso de ubicación denegado. Por favor, habilita los permisos de ubicación en tu navegador.';
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    errorMessage = 'Información de ubicación no disponible.';
+                    break;
+                case error.TIMEOUT:
+                    errorMessage = 'Tiempo de espera para obtener la ubicación agotado.';
+                    break;
+                default:
+                    errorMessage = 'Error desconocido al obtener la ubicación.';
+            }
+            
+            alert(errorMessage);
+            stopTracking();
+        }
+        
+        // Inicializar la aplicación cuando se cargue la página
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            toggleTrackingBtn.addEventListener('click', toggleTracking);
+        });
+    </script>
 </body>
 </html>
-
