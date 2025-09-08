@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mapa con ubicación usando Mapbox</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- CSS de Mapbox -->
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+  <style>
+    body, html { margin: 0; padding: 0; height: 100%; }
+    #map { width: 100%; height: 100vh; }
+  </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- JS de Mapbox -->
+<script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+<script>
+  // Tu token de acceso de Mapbox (regístrate en https://www.mapbox.com para obtener uno)
+  mapboxgl.accessToken = 'pk.eyJ1IjoiZ2FicmllbDI5LXMiLCJhIjoiY20yMnZvYnExMDJwNzJqcTV3d3J3cmUxdSJ9.fA3z9inzGxKvS2GC_rH20g';
+
+  // Crear el mapa centrado en una ubicación por defecto
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/streets-v12',
+    center: [-74.5, 40], // Longitud, Latitud (ejemplo: Nueva York)
+    zoom: 9
+  });
+
+  // Intentar obtener la ubicación del usuario
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(position => {
+      const userLng = position.coords.longitude;
+      const userLat = position.coords.latitude;
+
+      // Centrar el mapa en la ubicación del usuario
+      map.setCenter([userLng, userLat]);
+      map.setZoom(14);
+
+      // Agregar un marcador en la ubicación del usuario
+      new mapboxgl.Marker()
+        .setLngLat([userLng, userLat])
+        .setPopup(new mapboxgl.Popup().setText("Tu ubicación"))
+        .addTo(map);
+
+    }, error => {
+      alert('Error al obtener la ubicación: ' + error.message);
+    });
+  } else {
+    alert('Geolocalización no soportada por tu navegador');
+  }
+</script>
+
+</body>
+</html>
+
